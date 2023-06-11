@@ -1,4 +1,3 @@
-# github-pages-test
-Simple Test Page for GitHub Actions to Build and Deploy to GitHub Pages for checking service availability
-### URL: https://themindvirus.github.io/github-pages-test/
+# github-pages-test reposize
+Repo Size calculator using the GitHub REST API and AJAX (subject to error)
 ![screenshot](/screenshot.png)

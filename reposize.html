@@ -1,0 +1,93 @@
+<title>reposize</title>
+<style>
+*
+{
+    box-sizing: border-box;
+    margin: auto;
+    font-family: consolas, sans-serif;
+    font-size: 30pt;
+    text-align: center;
+}
+
+body
+{
+    background: #000040;
+    color: #ffffff;
+}
+
+#input_box
+{
+    width: 100%;
+    font-size: 15pt;
+    margin-bottom: 10px;
+}
+
+#warning
+{
+    color: #ff0044;
+    font-weight: bold;
+}
+</style>
+<script>
+var xmlhttp = null;
+var label = null;
+
+var input_box = null;
+var process_box = null;
+var output_box = null;
+
+window.onload = function()
+{
+    xmlhttp = new XMLHttpRequest();
+    label = document.getElementById("label");
+    input_box = document.getElementById("input_box");
+    process_box = document.getElementById("process_box");
+    output_box = document.getElementById("output_box");
+
+    label.innerText = "GitHub Repo Size API";
+    warning.innerText = "WARNING!: Reported size may be subject to systematic error!";
+
+    //input_box.value = "https://api.github.com/users/<username>/repos";
+    input_box.value = "https://api.github.com/users/TheMindVirus/repos?per_page=117";
+    process_box.innerText = "Calculate";
+    output_box.innerText = "?";
+}
+
+var input_box_enter = function(event)
+{
+    if (event.key == "Enter")
+    {
+        process_box_enter();
+    }
+}
+
+var process_box_enter = function()
+{
+    xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = process_box_ready;
+    xmlhttp.open("GET", input_box.value, true);
+    xmlhttp.send();
+}
+
+var process_box_ready = function()
+{
+    if ((xmlhttp.readyState == 4) && (xmlhttp.status == 200))
+    {
+        var size = 0;
+        var data = xmlhttp.responseText;
+        var json = JSON.parse(data);
+        for (var i = 0; i < json.length; ++i)
+        {
+            console.log(json[i].name);
+            try { size += json[i].size; } catch { }
+        }
+        //output_box.innerText = (size / 1024 / 1024).toFixed(3) + "MB";
+        output_box.innerText = size;
+    }
+}
+</script>
+<h1 id="label"></h1>
+<input id="input_box" type="text" value="" onkeydown="input_box_enter(event);"></input>
+<button id="process_box" onclick="process_box_enter();"></button>
+<h1 id="output_box"></h1>
+<h1 id="warning"></h1>
