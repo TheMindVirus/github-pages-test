@@ -1,0 +1,582 @@
+<style>
+  * { color-scheme: dark; font-family: consolas; font-weight: bold; }
+  body { background: #222; color: #FF0; }
+  canvas { margin: 10px; border-radius: 10px; border: 5px #FED solid; }
+  span { color: #0FF; }
+  div { position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: scroll; }
+</style>
+<script>
+window.onload = function() { div = document.createElement("div"); document.body.appendChild(div); start(); }
+span = function(...msg) { var str = "<span>"; for (var i = 0; i < msg.length; ++i) { str += msg[i]; } return str + "</span>"; }
+join = function(sep, ...msg) { var str = ""; for (var i = 0; i < msg.length; ++i) { str += (i == 0) ? span(msg[i]) : msg[i]; if (i < msg.length - 1) { str += sep; } } return str; }
+print = function(...msg) { div.innerHTML += join(" ", ...msg) + "</br>"; }
+start = function()
+{
+
+n = 2;
+y = 10;
+z = 0;
+
+t1 = 0;
+t2 = 0;
+t3 = 0;
+
+t1 = performance.now();
+z = Math.pow(n, y);
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "lookup table:", z, span("(", t3, "ns", ")"));
+
+z = 0;
+t1 = performance.now();
+for (var a = 0; a < n; ++a)
+{
+    for (var b = 0; b < n; ++b)
+    {
+        for (var c = 0; c < n; ++c)
+        {
+            for (var d = 0; d < n; ++d)
+            {
+                for (var e = 0; e < n; ++e)
+                {
+                    for (var f = 0; f < n; ++f)
+                    {
+                        for (var g = 0; g < n; ++g)
+                        {
+                            for (var h = 0; h < n; ++h)
+                            {
+                                for (var i = 0; i < n; ++i)
+                                {
+                                    for (var j = 0; j < n; ++j)
+                                    {
+                                        z += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "precompiled routine:", z, span("(", t3, "ns", ")"));
+
+z = 0;
+x = n;
+t1 = performance.now();
+for (var a = 0; a < 100000000000; ++a)
+{
+    z += 1;
+    if (z >= Math.pow(n, y)) { break; }
+    c = a % x;
+    d = parseInt(a / x);
+}
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "interpreted method:", z, span("(", t3, "ns", ")"));
+
+z = 0;
+c = new Int32Array(y);
+l = new Int32Array(y);
+for (var i = 0; i < y; ++i) { l[i] = n; }
+found = false;
+t1 = performance.now();
+for (var a = 0; a < 100000000000; ++a)
+{
+    z += 1;
+    for (var b = 0; b < y; ++b)
+    {
+        c[b] += 1;
+        if (c[b] >= l[b])
+        {
+            c[b] = 0;
+            if (b >= y - 1)
+            {
+                found = true;
+                break;
+            }
+        }
+        else { break; }
+    }
+    if (found) { break; }
+}
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "dimensional rotor:", z, span("(", t3, "ns", ")"));
+
+calc_z = function()
+{
+    z += 1;
+    if (z != Math.pow(n, y)) { calc_z(); }
+}
+
+z = 0;
+t1 = performance.now();
+calc_z();
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "recursive call:", z, span("(", t3, "ns", ")"));
+
+t1 = performance.now();
+z = Math.pow(n, y);
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "lookup table again:", z, span("(", t3, "ns", ")"));
+
+nn = new Float32Array(1);
+yy = new Float32Array(1);
+nn[0] = n;
+yy[0] = y;
+
+t1 = performance.now();
+z = Math.pow(nn, yy);
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "array lookup:", z, span("(", t3, "ns", ")"));
+
+t1 = performance.now();
+z = Math.pow(nn[0], yy[0]);
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "array lookup again:", z, span("(", t3, "ns", ")"));
+
+gpu = null;
+navigator.gpu.requestAdapter().then(function(event)
+{
+gpu = event;
+gpu.requestDevice().then(function(event)
+{
+gpu_dev = event;
+
+render_shader = 
+`
+struct appdata
+{
+    @builtin(position) position : vec4f, //decorators not required
+    @location(0) color : vec4f //decorators not required
+}
+
+@vertex //decorators not required
+fn vertex
+(
+@location(0) position: vec4f, //decorators not required
+@location(1) color: vec4f //decorators not required
+) -> appdata
+{
+    var output: appdata;
+    output.position = position;
+    output.color = color;
+    return output;
+}
+
+@fragment //decorators not required
+fn fragment(output: appdata) -> @location(0) vec4f //decorators not required
+{
+    return output.color;
+}
+`;
+
+gpu_vertex = 
+[{
+    attributes:
+    [
+        { shaderLocation: 0, offset:  0, format: "float32x4" },
+        { shaderLocation: 1, offset: 16, format: "float32x4" }
+    ],
+    arrayStride: 32, stepMode: "vertex"
+}];
+
+canvas = document.createElement("canvas");
+canvas.setAttribute("id", "canvas");
+ctx = canvas.getContext("webgpu");
+ctx.configure({ device: gpu_dev, format: navigator.gpu.getPreferredCanvasFormat(), alphaMode: "premultiplied" });
+
+gpu_stream = GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST;
+gpu_storage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC;
+gpu_storage_in = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
+gpu_staging = GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST;
+gpu_staging_in = GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC;
+gpu_texture = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT;
+gpu_texture_in = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT;
+gpu_uniform = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC;
+gpu_uniform_in = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
+gpu_uniform_indirect = GPUBufferUsage.UNIFORM | GPUBufferUsage.INDIRECT;
+
+gpu_data = new Float32Array([0.0, 0.6, 0, 1, 1, 0, 0, 1, -0.5, -0.6, 0, 1, 0, 1, 0, 1, 0.5, -0.6, 0, 1, 0, 0, 1, 1]);
+gpu_buffer = gpu_dev.createBuffer({ size: gpu_data.byteLength, usage: gpu_stream });
+gpu_dev.queue.writeBuffer(gpu_buffer, 0, gpu_data, 0, gpu_data.length);
+
+gpu_render_shader = gpu_dev.createShaderModule({ code: render_shader });
+gpu_render_pass = { colorAttachments: [{ clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }, loadOp: "clear", storeOp: "store", view: ctx.getCurrentTexture().createView() } ] };
+
+gpu_desc = 
+{
+    vertex: { module: gpu_render_shader, entryPoint: "vertex", buffers: gpu_vertex },
+    fragment: { module: gpu_render_shader, entryPoint: "fragment", targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }] },
+    primitive: { topology: "triangle-list" }, layout: "auto"
+};
+gpu_render = gpu_dev.createRenderPipeline(gpu_desc);
+
+gpu_cmd = gpu_dev.createCommandEncoder();
+gpu_enc = gpu_cmd.beginRenderPass(gpu_render_pass);
+gpu_enc.setPipeline(gpu_render);
+gpu_enc.setVertexBuffer(0, gpu_buffer);
+gpu_enc.draw(3);
+gpu_enc.end();
+
+//gpu_dev.queue.submit([gpu_cmd.finish()]); //invalidates compute shader
+
+dst = new Float32Array(1);
+base = new Float32Array(1);
+exp = new Float32Array(1);
+base[0] = n;
+exp[0] = y;
+dst[0] = 4;
+
+aux1 = n; //6;
+aux2 = y; //-6;
+
+t1 = performance.now();
+
+compute_shader = 
+`
+@group(0) @binding(0) //decorators not required
+var<storage, read_write> dst: array<f32>;
+@group(1) @binding(1) //decorators not required
+var<storage, read_write> base: array<f32>;
+@group(2) @binding(2) //decorators not required
+var<storage, read_write> exp: array<f32>;
+
+@group(0) @binding(1) //decorators not required
+var<uniform> aux1: f32;
+@group(0) @binding(2) //decorators not required
+var<uniform> aux2: f32;
+
+@compute @workgroup_size(1) //decorators not required
+fn main
+(
+@builtin(global_invocation_id) //decorators not required
+idx : vec3u,
+@builtin(local_invocation_id) //decorators not required
+idk : vec3u
+)
+{
+    var i = idx.x;
+    if (i >= 1) { return; }
+    dst[i] = pow(aux1, aux2); //pow(base[i], exp[i]);
+}
+`;
+
+gpu_compute_shader = gpu_dev.createShaderModule({ code: compute_shader });
+gpu_compute_pass = { label: "compute_shader_0001" };
+
+gpu_dst = gpu_dev.createBuffer({ size: dst.byteLength, usage: gpu_storage });
+gpu_base = gpu_dev.createBuffer({ size: base.byteLength, usage: gpu_storage_in });
+gpu_exp = gpu_dev.createBuffer({ size: exp.byteLength, usage: gpu_storage_in });
+
+gpu_aux1 = gpu_dev.createBuffer({ size: 12, usage: gpu_uniform_in });
+gpu_aux2 = gpu_dev.createBuffer({ size: 12, usage: gpu_uniform_in });
+
+gpu_dst_tmp = gpu_dev.createBuffer({ size: dst.byteLength, usage: gpu_staging });
+gpu_base_tmp = gpu_dev.createBuffer({ size: base.byteLength, usage: gpu_staging_in });
+gpu_exp_tmp = gpu_dev.createBuffer({ size: exp.byteLength, usage: gpu_staging_in });
+
+gpu_binding_0 = 
+{
+    entries:
+    [
+        { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }
+    ],
+};
+
+gpu_binding_1 = 
+{
+    entries:
+    [
+        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+    ],
+};
+
+gpu_binding_2 = 
+{
+    entries:
+    [
+        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }
+    ],
+};
+
+gpu_layout_0 = gpu_dev.createBindGroupLayout(gpu_binding_0);
+gpu_layout_1 = gpu_dev.createBindGroupLayout(gpu_binding_1);
+gpu_layout_2 = gpu_dev.createBindGroupLayout(gpu_binding_2);
+gpu_layout = 
+{
+    compute: { module: gpu_compute_shader, entryPoint: "main" },
+    //layout: "auto"
+    layout: gpu_dev.createPipelineLayout
+    ({ bindGroupLayouts: [gpu_layout_0, gpu_layout_1, gpu_layout_2] }),
+};
+
+gpu_bound_0 = 
+{
+    layout: gpu_layout_0,
+    entries:
+    [
+        { binding: 0, resource: { buffer: gpu_dst  } },
+        { binding: 1, resource: { buffer: gpu_aux1 } },
+        { binding: 2, resource: { buffer: gpu_aux2 } },
+    ]
+};
+
+gpu_bound_1 = 
+{
+    layout: gpu_layout_1,
+    entries:
+    [
+        { binding: 1, resource: { buffer: gpu_base } }
+    ]
+};
+
+gpu_bound_2 = 
+{
+    layout: gpu_layout_2,
+    entries:
+    [
+        { binding: 2, resource: { buffer: gpu_exp  } }
+    ]
+};
+gpu_group_0 = gpu_dev.createBindGroup(gpu_bound_0);
+gpu_group_1 = gpu_dev.createBindGroup(gpu_bound_1);
+gpu_group_2 = gpu_dev.createBindGroup(gpu_bound_2);
+
+gpu_size = 4;
+
+gpu_compute = gpu_dev.createComputePipeline(gpu_layout);
+
+gpu_dev.queue.writeBuffer(gpu_base, 0, base, 0, 1);
+gpu_dev.queue.writeBuffer(gpu_exp, 0, exp, 0, 1);
+
+tmpbuf1 = new Float32Array(1);
+tmpbuf1[0] = aux1; //!!!
+gpu_dev.queue.writeBuffer(gpu_aux1, 0, tmpbuf1, 0, 1);
+
+tmpbuf2 = new Float32Array(1);
+tmpbuf2[0] = aux2; //!!!
+gpu_dev.queue.writeBuffer(gpu_aux2, 0, tmpbuf2, 0, 1);
+
+//gpu_dst_tmp.mapAsync(GPUMapMode.WRITE, 0, dst.byteLength).then(function(event)
+//{
+//gpu_base_tmp.mapAsync(GPUMapMode.WRITE, 0, base.byteLength).then(function(event)
+//{
+//gpu_exp_tmp.mapAsync(GPUMapMode.WRITE, 0, exp.byteLength).then(function(event)
+//{
+
+//gpu_dst_map = gpu_dst_tmp.getMappedRange(0, gpu_size);
+//gpu_base_map = gpu_base_tmp.getMappedRange(0, gpu_size);
+//gpu_exp_map = gpu_exp_tmp.getMappedRange(0, gpu_size);
+//gpu_dst_map[0] = 4;
+//gpu_base_map[0] = n;
+//gpu_exp_map[0] = y;
+//gpu_dst_tmp.unmap();
+//gpu_base_tmp.unmap();
+//gpu_exp_tmp.unmap();
+
+//gpu_cmd.copyBufferToBuffer(gpu_dst_tmp, 0, gpu_dst, 0, dst.byteLength);
+//gpu_cmd.copyBufferToBuffer(gpu_base_tmp, 0, gpu_base, 0, base.byteLength);
+//gpu_cmd.copyBufferToBuffer(gpu_exp_tmp, 0, gpu_exp, 0, exp.byteLength);
+
+//img_base = document.getElementById("px1");
+//img_exp = document.getElementById("px2");
+
+//img_base.width = 1;
+//img_base.height = 1;
+
+//img_exp.width = 1;
+//img_exp.height = 1;
+
+//window.createImageBitmap(img_base).then(function(event)
+//{
+//bmp_base = event;
+//window.createImageBitmap(img_exp).then(function(event)
+//{
+//bmp_exp = event;
+
+//tex_base = gpu_dev.createTexture({ size: [1, 1, 1], format: "rgba8unorm", usage: gpu_texture_in });
+//tex_exp  = gpu_dev.createTexture({ size: [1, 1, 1], format: "rgba8unorm", usage: gpu_texture_in });
+
+//gpu_dev.queue.copyExternalImageToTexture({ source: bmp_base }, { texture: tex_base }, [1, 1]);
+//gpu_dev.queue.copyExternalImageToTexture({ source: bmp_exp  }, { texture: tex_exp  }, [1, 1]);
+
+//gpu_cmd.copyTextureToBuffer({ texture: tex_base }, { buffer: gpu_base }, { width: 1, height: 1, depthOrArrayLayers: 1 });
+//gpu_cmd.copyTextureToBuffer({ texture: tex_exp }, { buffer: gpu_exp }, { width: 1, height: 1, depthOrArrayLayers: 1 });
+
+gpu_enc = gpu_cmd.beginComputePass(gpu_compute_pass);
+gpu_enc.setPipeline(gpu_compute);
+gpu_enc.setBindGroup(0, gpu_group_0);
+gpu_enc.setBindGroup(1, gpu_group_1);
+gpu_enc.setBindGroup(2, gpu_group_2);
+//gpu_enc.setUniformBuffer(1, gpu_base);
+//gpu_enc.setUniformBuffer(2, gpu_exp);
+gpu_enc.dispatchWorkgroups(1);
+//gpu_enc.dispatchWorkgroupsIndirect(gpu_aux1, 0);
+gpu_enc.end();
+
+gpu_cmd.copyBufferToBuffer(gpu_dst, 0, gpu_dst_tmp, 0, dst.byteLength);
+//gpu_cmd.copyBufferToBuffer(gpu_base, 0, gpu_base_tmp, 0, base.byteLength);
+//gpu_cmd.copyBufferToBuffer(gpu_exp, 0, gpu_exp_tmp, 0, exp.byteLength);
+gpu_dev.queue.submit([gpu_cmd.finish()]);
+
+gpu_dst_tmp.mapAsync(GPUMapMode.READ, 0, dst.byteLength).then(function(event)
+{
+//gpu_base_tmp.mapAsync(GPUMapMode.READ, 0, base.byteLength).then(function(event)
+//{
+//gpu_exp_tmp.mapAsync(GPUMapMode.READ, 0, exp.byteLength).then(function(event)
+//{
+
+gpu_dst_map = gpu_dst_tmp.getMappedRange(0, gpu_size);
+//gpu_base_map = gpu_base_tmp.getMappedRange(0, gpu_size);
+//gpu_exp_map = gpu_exp_tmp.getMappedRange(0, gpu_size);
+data = gpu_dst_map.slice();
+//gpu_base_map.slice();
+//gpu_exp_map.slice();
+gpu_dst_tmp.unmap();
+//gpu_base_tmp.unmap();
+//gpu_exp_tmp.unmap();
+
+dst = new Float32Array(data);
+z = dst[0];
+//console.log(dst);
+
+t2 = performance.now();
+t3 = (t2 - t1) * 1000000;
+print("[INFO]:", "webgpu shader:", z, span("(", t3, "ns", ")"));
+div.appendChild(canvas);print();
+//print("[INFO]:", "Anything"); //!!! voids canvas
+//canvas.width = canvas.width;
+//div.appendChild(canvas);
+
+//div.appendChild(canvas);
+//print();
+//div.innerHTML = div.innerHTML;
+
+render_frame = function()
+{
+
+gpu = null;
+navigator.gpu.requestAdapter().then(function(event)
+{
+gpu = event;
+gpu.requestDevice().then(function(event)
+{
+gpu_dev = event;
+
+render_shader = 
+`
+struct appdata
+{
+    @builtin(position) position : vec4f, //decorators not required
+    @location(0) color : vec4f //decorators not required
+}
+
+@vertex //decorators not required
+fn vertex
+(
+@location(0) position: vec4f, //decorators not required
+@location(1) color: vec4f //decorators not required
+) -> appdata
+{
+    var output: appdata;
+    output.position = position;
+    output.color = color;
+    return output;
+}
+
+@fragment //decorators not required
+fn fragment(output: appdata) -> @location(0) vec4f //decorators not required
+{
+    return output.color;
+}
+`;
+
+gpu_vertex = 
+[{
+    attributes:
+    [
+        { shaderLocation: 0, offset:  0, format: "float32x4" },
+        { shaderLocation: 1, offset: 16, format: "float32x4" }
+    ],
+    arrayStride: 32, stepMode: "vertex"
+}];
+
+//canvas = document.createElement("canvas");
+//canvas.setAttribute("id", "canvas");
+canvas = document.getElementById("canvas");
+ctx = canvas.getContext("webgpu");
+ctx.configure({ device: gpu_dev, format: navigator.gpu.getPreferredCanvasFormat(), alphaMode: "premultiplied" });
+
+gpu_stream = GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST;
+gpu_storage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC;
+gpu_storage_in = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
+gpu_staging = GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST;
+gpu_staging_in = GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC;
+gpu_texture = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT;
+gpu_texture_in = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT;
+gpu_uniform = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_SRC;
+gpu_uniform_in = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
+gpu_uniform_indirect = GPUBufferUsage.UNIFORM | GPUBufferUsage.INDIRECT;
+
+gpu_data = new Float32Array([0.0, 0.6, 0, 1, 1, 0, 0, 1, -0.5, -0.6, 0, 1, 0, 1, 0, 1, 0.5, -0.6, 0, 1, 0, 0, 1, 1]);
+gpu_buffer = gpu_dev.createBuffer({ size: gpu_data.byteLength, usage: gpu_stream });
+gpu_dev.queue.writeBuffer(gpu_buffer, 0, gpu_data, 0, gpu_data.length);
+
+gpu_render_shader = gpu_dev.createShaderModule({ code: render_shader });
+gpu_render_pass = { colorAttachments: [{ clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }, loadOp: "clear", storeOp: "store", view: ctx.getCurrentTexture().createView() } ] };
+
+gpu_desc = 
+{
+    vertex: { module: gpu_render_shader, entryPoint: "vertex", buffers: gpu_vertex },
+    fragment: { module: gpu_render_shader, entryPoint: "fragment", targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }] },
+    primitive: { topology: "triangle-list" }, layout: "auto"
+};
+gpu_render = gpu_dev.createRenderPipeline(gpu_desc);
+
+gpu_cmd = gpu_dev.createCommandEncoder();
+gpu_enc = gpu_cmd.beginRenderPass(gpu_render_pass);
+gpu_enc.setPipeline(gpu_render);
+gpu_enc.setVertexBuffer(0, gpu_buffer);
+gpu_enc.draw(3);
+gpu_enc.end();
+
+gpu_dev.queue.submit([gpu_cmd.finish()]);
+
+});});}
+
+render_frame();
+print("[INFO]:", "Anything"); //!!! now doesn't void canvas
+
+//});
+//});
+
+//};
+//};
+
+//});
+//});
+//});
+
+//});
+//});
+});
+
+});
+});
+}
+</script>
+<!--
+<img src="1px.bmp" id="px1"></img>
+<img src="1px.bmp" id="px2"></img>
+-->
