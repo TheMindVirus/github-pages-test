@@ -1,4 +1,4 @@
-# github-pages-test
-Simple Test Page for GitHub Actions to Build and Deploy to GitHub Pages for checking service availability
-### URL: https://themindvirus.github.io/github-pages-test/
-![screenshot](/screenshot.png)
+# Emergency Volatile Branch for Sensitive Materials requiring immediate bomb diffusal on discovery
+
+#### It is strongly advised to refrain from running content stored in this branch for safety reasons
+
